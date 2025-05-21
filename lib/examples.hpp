@@ -71,59 +71,10 @@ real_t max_key(time_dict const& dict) {
 //! @}
 
 
-//! @brief Examples from Sections 5 and 6, translated into FCPP.
+//! @brief Examples from Sections 5 and 6, translated into FCPP, ordered by their model class as in Table 1 (bottom to top).
 //! @{
 
-//! @brief Computes a counter that is collaboratively increased across the network.
-FUN int sharedcounter(ARGS) { CODE
-    return nbr(CALL, 0, [&](field<int> n){
-        return max_hood(CALL, n)+1;
-    });
-}
-//! @brief Export list for function sharedcounter.
-FUN_EXPORT sharedcounter_t = export_list<int>;
-
-
-//! @brief Computes hop-count distances from the closest source device.
-FUN hops_t dist(ARGS, bool source) { CODE
-    return nbr(CALL, HOPS_MAX, [&](field<hops_t> d){
-        return (hops_t)mux(source, 0, min_hood(CALL, d) + 1);
-    });
-}
-//! @brief Export list for function dist.
-FUN_EXPORT dist_t = export_list<hops_t>;
-
-
-//! @brief Computes hop-count distances from the closest source device.
-FUN real_t rdist(ARGS, bool source) { CODE
-    return nbr(CALL, INF, [&](field<real_t> d){
-        return mux(source, real_t(0), min_hood(CALL, d + node.nbr_dist()));
-    });
-}
-//! @brief Export list for function rdist.
-FUN_EXPORT rdist_t = export_list<real_t>;
-
-
-//! @brief Implementation of the SLCS formula (a R (<>b)).
-FUN bool closereach(ARGS, bool a, bool b) { CODE
-    // SCLS as implemented in the FCPP coordination library
-    using namespace logic;
-    return R(CALL, a, C(CALL, b));
-}
-//! @brief Export list for function closereach.
-FUN_EXPORT closereach_t = export_list<slcs_t>;
-
-
-//! @brief Knowledge-free leader election as in [Mo et al.].
-FUN bool election(ARGS) { CODE
-    // already implemented in the FCPP coordination library
-    return wave_election(CALL) == node.uid;
-}
-//! @brief Export list for function election.
-FUN_EXPORT election_t = export_list<wave_election_t<>>;
-
-
-//! @brief Computes low-pass filtering of a real argument.
+//! @brief Computes low-pass filtering of a real argument (SI-TI).
 FUN real_t lowpass(ARGS, real_t v) { CODE
     return old(CALL, v, [&](real_t x){
         return (x+v)/2;
@@ -133,17 +84,7 @@ FUN real_t lowpass(ARGS, real_t v) { CODE
 FUN_EXPORT lowpass_t = export_list<real_t>;
 
 
-//! @brief Accumulates the values of the provided argument.
-FUN real_t accumulate(ARGS, real_t v) { CODE
-    return old(CALL, 0, [&](real_t x){
-        return x + v;
-    });
-}
-//! @brief Export list for function accumulate.
-FUN_EXPORT accumulate_t = export_list<real_t>;
-
-
-//! @brief Integrates the values of the provided argument.
+//! @brief Integrates the values of the provided argument (SI-TC).
 FUN real_t integrate(ARGS, real_t v) { CODE
     return old(CALL, 0, [&](real_t x){
         return x + v * (node.current_time() - node.previous_time());
@@ -153,26 +94,27 @@ FUN real_t integrate(ARGS, real_t v) { CODE
 FUN_EXPORT integrate_t = export_list<real_t>;
 
 
-//! @brief Integrates the values of the provided argument.
-FUN bool minintegral(ARGS, real_t v) { CODE
-    real_t i = integrate(CALL, v);
-    return i < min_hood(CALL, nbr(CALL, i), INF);
-}
-//! @brief Export list for function minintegral.
-FUN_EXPORT minintegral_t = export_list<integrate_t, real_t>;
-
-
-//! @brief Computes the minimum value of v in the history of a network through basic gossiping.
-FUN real_t maxgossip(ARGS, real_t v) { CODE
-    return nbr(CALL, v, [&](field<real_t> n){
-        return max(max_hood(CALL, n), v);
+//! @brief Accumulates the values of the provided argument (SI-TD).
+FUN real_t accumulate(ARGS, real_t v) { CODE
+    return old(CALL, 0, [&](real_t x){
+        return x + v;
     });
 }
-//! @brief Export list for function maxgossip.
-FUN_EXPORT maxgossip_t = export_list<real_t>;
+//! @brief Export list for function accumulate.
+FUN_EXPORT accumulate_t = export_list<real_t>;
 
 
-//! @brief Computes the minimum value of v in a network through timestamped gossiping.
+//! @brief Computes hop-count distances from the closest source device (SC-TI).
+FUN real_t rdist(ARGS, bool source) { CODE
+    return nbr(CALL, INF, [&](field<real_t> d){
+        return mux(source, real_t(0), min_hood(CALL, d + node.nbr_dist()));
+    });
+}
+//! @brief Export list for function rdist.
+FUN_EXPORT rdist_t = export_list<real_t>;
+
+
+//! @brief Computes the minimum value of v in a network through timestamped gossiping (SC-TI).
 FUN real_t maximize(ARGS, real_t v, times_t threshold) { CODE
     time_dict loc = {{node.uid, {v, node.current_time()}}};
     time_dict glob = nbr(CALL, loc, [&](field<time_dict> n){
@@ -183,6 +125,64 @@ FUN real_t maximize(ARGS, real_t v, times_t threshold) { CODE
 }
 //! @brief Export list for function maximize.
 FUN_EXPORT maximize_t = export_list<time_dict>;
+
+
+//! @brief Computes the minimum value of v in the history of a network through basic gossiping (SC-TC).
+FUN real_t maxgossip(ARGS, real_t v) { CODE
+    return nbr(CALL, v, [&](field<real_t> n){
+        return max(max_hood(CALL, n), v);
+    });
+}
+//! @brief Export list for function maxgossip.
+FUN_EXPORT maxgossip_t = export_list<real_t>;
+
+
+//! @brief Computes hop-count distances from the closest source device (SD-TI).
+FUN hops_t dist(ARGS, bool source) { CODE
+    return nbr(CALL, HOPS_MAX, [&](field<hops_t> d){
+        return (hops_t)mux(source, 0, min_hood(CALL, d) + 1);
+    });
+}
+//! @brief Export list for function dist.
+FUN_EXPORT dist_t = export_list<hops_t>;
+
+
+//! @brief Knowledge-free leader election as in Mo et al. (SD-TI).
+FUN bool election(ARGS) { CODE
+    // already implemented in the FCPP coordination library
+    return wave_election(CALL) == node.uid;
+}
+//! @brief Export list for function election.
+FUN_EXPORT election_t = export_list<wave_election_t<>>;
+
+
+//! @brief Implementation of the SLCS formula `a R (<>b)` (SD-TI).
+FUN bool closereach(ARGS, bool a, bool b) { CODE
+    // SCLS as implemented in the FCPP coordination library
+    using namespace logic;
+    return R(CALL, a, C(CALL, b));
+}
+//! @brief Export list for function closereach.
+FUN_EXPORT closereach_t = export_list<slcs_t>;
+
+
+//! @brief Integrates the values of the provided argument (SD-TC).
+FUN bool minintegral(ARGS, real_t v) { CODE
+    real_t i = integrate(CALL, v);
+    return i < min_hood(CALL, nbr(CALL, i), INF);
+}
+//! @brief Export list for function minintegral.
+FUN_EXPORT minintegral_t = export_list<integrate_t, real_t>;
+
+
+//! @brief Computes a counter that is collaboratively increased across the network (SD-TD).
+FUN int sharedcount(ARGS) { CODE
+    return nbr(CALL, 0, [&](field<int> n){
+        return max_hood(CALL, n)+1;
+    });
+}
+//! @brief Export list for function sharedcounter.
+FUN_EXPORT sharedcounter_t = export_list<int>;
 
 //! @}
 
