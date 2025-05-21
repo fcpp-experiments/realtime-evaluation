@@ -60,8 +60,8 @@ time_dict& discard(time_dict& x, times_t t) {
     return x;
 }
 
-//! @brief Computes the maximum key in a time_dict.
-real_t max_key(time_dict const& dict) {
+//! @brief Computes the maximum value in a time_dict.
+real_t max_value(time_dict const& dict) {
     real_t key = 0;
     for (auto const& kv : dict)
         key = max(key, kv.second.second);
@@ -121,7 +121,7 @@ FUN real_t maximize(ARGS, real_t v, times_t threshold) { CODE
         time_dict x = update(fold_hood(CALL, update, n), loc);
         return discard(x, node.current_time() - threshold);
     });
-    return max_key(glob);
+    return max_value(glob);
 }
 //! @brief Export list for function maximize.
 FUN_EXPORT maximize_t = export_list<time_dict>;
