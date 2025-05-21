@@ -114,9 +114,9 @@ FUN real_t rdist(ARGS, bool source) { CODE
 FUN_EXPORT rdist_t = export_list<real_t>;
 
 
-//! @brief Computes the minimum value of v in a network through timestamped gossiping (SC-TI).
+//! @brief Computes the maximum value of v in a network through timestamped gossiping (SC-TI).
 FUN real_t maximize(ARGS, real_t v, times_t threshold) { CODE
-    time_dict loc = {{node.uid, {v, node.current_time()}}};
+    time_dict loc = {{node.uid, {node.current_time(),v}}};
     time_dict glob = nbr(CALL, loc, [&](field<time_dict> n){
         time_dict x = update(fold_hood(CALL, update, n), loc);
         return discard(x, node.current_time() - threshold);
@@ -127,7 +127,7 @@ FUN real_t maximize(ARGS, real_t v, times_t threshold) { CODE
 FUN_EXPORT maximize_t = export_list<time_dict>;
 
 
-//! @brief Computes the minimum value of v in the history of a network through basic gossiping (SC-TC).
+//! @brief Computes the maximum value of v in the history of a network through basic gossiping (SC-TC).
 FUN real_t maxgossip(ARGS, real_t v) { CODE
     return nbr(CALL, v, [&](field<real_t> n){
         return max(max_hood(CALL, n), v);

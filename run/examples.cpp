@@ -13,7 +13,7 @@
 namespace fcpp {
 
 //! @brief Number of nodes in the area.
-constexpr int node_num = 400;
+constexpr int node_num = 600;
 //! @brief Size of the area.
 constexpr size_t size = 1000;
 //! @brief The maximum communication range between nodes.
