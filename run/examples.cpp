@@ -13,7 +13,7 @@
 namespace fcpp {
 
 //! @brief Number of nodes in the area.
-constexpr int node_num = 600;
+constexpr int node_num = 500;
 //! @brief Size of the area.
 constexpr size_t size = 1000;
 //! @brief The maximum communication range between nodes.
@@ -24,10 +24,17 @@ constexpr size_t dim = 2;
 //! @brief Factor for calculating hues from real distances.
 constexpr real_t hue_factor = 360.0 / size;
 
+//! @brief Number of sources.
+constexpr size_t source_num = 4;
+//! @brief Convergence time for each source.
+constexpr size_t conv_time = 70;
 //! @brief End of the simulation.
-constexpr size_t end_time = 200;
+constexpr size_t end_time = source_num * conv_time + 20;
 //! @brief Time after which old values are discarded.
 constexpr times_t discard_time = size * 1.5 / comm_range;
+
+//! @brief Fixed positions of sources.
+constexpr vec<2> source_pos[source_num] = {{size/2,size/2}, {size/4,size*3/4}, {size/2+20,size/2-20}, {size,size}};
 
 
 //! @brief Namespace containing the libraries of coordination routines.
@@ -39,6 +46,8 @@ namespace tags {
     struct node_color_in {};
     //! @brief Outer color bands of the current node.
     struct node_color_out {};
+    //! @brief Size of the shadow of the current node.
+    struct node_shadow{};
     //! @brief Size of the current node.
     struct node_size {};
     //! @brief Shape of the current node.
@@ -58,13 +67,14 @@ MAIN() {
     // import tag names in the local scope.
     using namespace tags;
 
-    // change stable_diam source at the second half of the simulated time
-    bool second_half = node.current_time()*4 > end_time;
-    device_t hsource = second_half ? 200 : 100;
+    // change source every conv_time simulated seconds
+    device_t sid = min(node.current_time() / conv_time, source_num - 1.0);
+    // fixed positions for leaders
+    if (node.uid < source_num) node.position() = source_pos[node.uid];
 
     // call the algorithms
     diam_data hd = hop_diameter(CALL, discard_time);
-    diam_data sd = stable_diameter(CALL, hsource);
+    diam_data sd = stable_diameter(CALL, sid == node.uid);
 
     // adjust hop-counts to be measurable as distances
     get<1>(hd) *= comm_range;
@@ -75,16 +85,20 @@ MAIN() {
     node.storage(hop_diam{}) = get<2>(hd);
     node.storage(stable_dist{}) = get<1>(sd);
     node.storage(stable_diam{}) = get<2>(sd);
-    node.storage(node_size{}) = get<0>(hd) or get<0>(sd) ? 20 : 12;
+    node.storage(node_shadow{}) = 40*get<0>(sd);
+    node.storage(node_size{}) = 10 + 10*get<0>(hd);
     node.storage(node_color_in{})  = color::hsva(get<1>(hd) * hue_factor, 1, 1);
     node.storage(node_color_out{}) = color::hsva(get<1>(sd) * hue_factor, 1, 1);
-    node.storage(node_shape{}) = get<0>(sd) ? shape::octahedron : get<0>(hd) ? shape::cube : shape::sphere;
+    node.storage(node_shape{}) = get<0>(sd) ? shape::cube : get<0>(hd) ? shape::octahedron : shape::sphere;
 
-    // killing the hop_diam source at the second half of the simulated time
-    if (node.uid == 0 and second_half and node.current_time() < end_time) {
+    // killing the former sources
+    if (node.uid < sid and node.current_time() < end_time) {
         node.next_time(end_time+2);
         node.storage(node_color_in{}) = node.storage(node_color_out{}) = color(GRAY);
         node.storage(node_shape{}) = shape::icosahedron;
+        node.storage(hop_diam{}) = NAN;
+        node.storage(stable_diam{}) = NAN;
+        node.storage(node_shadow{}) = 0;
     }
 }
 //! @brief Export types used by the main function (update it when expanding the program).
@@ -119,6 +133,7 @@ using rectangle_d = distribution::rect_n<1, 0, 0, size, size>;
 using store_t = tuple_store<
     node_color_in,              color,
     node_color_out,             color,
+    node_shadow,                double,
     node_size,                  double,
     node_shape,                 shape,
     hop_dist,                   real_t,
@@ -142,7 +157,7 @@ using plot_t = plot::split<plot::time, plot::values<aggregator_t, row_aggregator
 
 //! @brief The general simulation options.
 DECLARE_OPTIONS(list,
-    parallel<false>,      // multithreading enabled on node rounds
+    parallel<true>,      // multithreading enabled on node rounds
     synchronised<false>, // optimise for asynchronous networks
     program<coordination::main>,   // program to be run (refers to MAIN above)
     exports<coordination::main_t>, // export type list (types used in messages)
@@ -160,6 +175,9 @@ DECLARE_OPTIONS(list,
     connector<connect::fixed<comm_range, 1, dim>>, // connection allowed within a fixed comm range
     shape_tag<node_shape>, // the shape of a node is read from this tag in the store
     size_tag<node_size>,   // the size  of a node is read from this tag in the store
+    shadow_size_tag<node_shadow>, // the size of the shadow of a node is read from this tag
+    shadow_shape_val<(int)shape::sphere>, // the shadow of nodes are circular
+    shadow_color_val<DARK_SLATE_GRAY>,    // the shadow of nodes are in dark slate gray
     color_tag<node_color_in, node_color_out> // node colors are read from these tags in the store
 );
 
@@ -179,7 +197,7 @@ int main() {
         // The network object type (interactive simulator with given options).
         using net_t = component::interactive_simulator<option::list>::net;
         // The initialisation values (simulation name and plotter object).
-        auto init_v = common::make_tagged_tuple<option::name, option::plotter>("evaluation of real-time guarantees", &p);
+        auto init_v = common::make_tagged_tuple<option::name, option::plotter>("Evaluation of Composable Models and Guarantees", &p);
         // Construct the network object.
         net_t network{init_v};
         // Run the simulation until exit.

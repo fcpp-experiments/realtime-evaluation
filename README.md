@@ -1,6 +1,6 @@
-# Experimental evaluation of real-time guarantees in FCPP
+# Evaluation of Composable Models and Guarantees in FCPP
 
-Experiments for the paper "" submitted to the _FoMaC Special Issue for ReoCAS 2024_ of the _International Journal on Software Tools for Technology Transfer_ (STTT). 
+Experiments for the paper "Composable Models and Guarantees for Composable Distributed Systems" submitted to the _FoMaC Special Issue for ReoCAS 2024_ of the _International Journal on Software Tools for Technology Transfer_ (STTT).
 
 The FCPP implementation of all examples presented in the paper is available in file [lib/examples.hpp](https://github.com/fcpp/fcpp-exercises/blob/master/lib/examples.hpp).
 The executable simulation for the case study presented in the paper is available in file [run/examples.cpp](https://github.com/fcpp/fcpp-exercises/blob/master/run/examples.cpp).

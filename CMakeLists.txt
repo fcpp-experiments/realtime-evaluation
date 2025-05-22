@@ -11,7 +11,7 @@ fcpp_setup()
 project(
     examples
     VERSION 0.0.0
-    DESCRIPTION "Experimental evaluation of real-time guarantees in FCPP."
+    DESCRIPTION "Evaluation of Composable Models and Guarantees in FCPP."
 )
 
 # target declaration

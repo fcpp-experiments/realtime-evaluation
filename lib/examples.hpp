@@ -62,10 +62,16 @@ time_dict& discard(time_dict& x, times_t t) {
 
 //! @brief Computes the maximum value in a time_dict.
 real_t max_value(time_dict const& dict) {
-    real_t key = 0;
+    real_t val = 0;
     for (auto const& kv : dict)
-        key = max(key, kv.second.second);
-    return key;
+        val = max(val, kv.second.second);
+    return val;
+}
+
+//! @brief Computes the difference between the current and the previous time (1 for the first round).
+template <typename node_t>
+times_t delta_time(node_t const& node) {
+    return node.previous_time() < 0 ? 1 : node.current_time() - node.previous_time();
 }
 
 //! @}
@@ -87,7 +93,7 @@ FUN_EXPORT lowpass_t = export_list<real_t>;
 //! @brief Integrates the values of the provided argument (SI-TC).
 FUN real_t integrate(ARGS, real_t v) { CODE
     return old(CALL, 0, [&](real_t x){
-        return x + v * (node.current_time() - node.previous_time());
+        return x + v * delta_time(node);
     });
 }
 //! @brief Export list for function integrate.
@@ -107,7 +113,7 @@ FUN_EXPORT accumulate_t = export_list<real_t>;
 //! @brief Computes hop-count distances from the closest source device (SC-TI).
 FUN real_t rdist(ARGS, bool source) { CODE
     return nbr(CALL, INF, [&](field<real_t> d){
-        return mux(source, real_t(0), min_hood(CALL, d + node.nbr_dist()));
+        return mux(source, real_t(0), min_hood(CALL, d + node.nbr_dist(), INF));
     });
 }
 //! @brief Export list for function rdist.
@@ -140,7 +146,7 @@ FUN_EXPORT maxgossip_t = export_list<real_t>;
 //! @brief Computes hop-count distances from the closest source device (SD-TI).
 FUN hops_t dist(ARGS, bool source) { CODE
     return nbr(CALL, HOPS_MAX, [&](field<hops_t> d){
-        return (hops_t)mux(source, 0, min_hood(CALL, d) + 1);
+        return (hops_t)mux(source, 0, min_hood(CALL, d, HOPS_MAX) + 1);
     });
 }
 //! @brief Export list for function dist.
@@ -214,11 +220,10 @@ FUN_EXPORT hop_diameter_t = export_list<election_t, dist_t, maximize_t>;
  *
  * Function in SC-TC, that could comply to a form of Specification 4 (continuous).
  */
-FUN diam_data stable_diameter(ARGS, device_t sid) { CODE
-    bool source = node.uid == sid;
+FUN diam_data stable_diameter(ARGS, bool source) { CODE
     real_t d = rdist(CALL, source);
-    if  (d == INF) return diam_data(source, d, d);
-    real_t avgd = integrate(CALL, d) / integrate(CALL, 1);
+    real_t z = d == INF ? 0 : d;
+    real_t avgd = integrate(CALL, z) / integrate(CALL, 1);
     real_t diam = maxgossip(CALL, lowpass(CALL, avgd));
     return diam_data(source, avgd, diam);
 }
